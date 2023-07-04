@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Hacker Clicker</title>
+    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #000000;
+            font-family: Arial, sans-serif;
+        }
+
+        #hacker-face {
+            width: 300px;
+            height: 300px;
+            background-image: url('hacker-face.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            cursor: pointer;
+            position: fixed;
+            z-index: 1;
+        }
+
+        #score {
+            color: #f702ff;
+            font-size: 40px;
+            margin-top: 20px;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2;
+        }
+
+        #admin-panel {
+            display: none;
+            position: fixed;
+            color: #f702ff;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 4;
+        }
+
+        #admin-panel input {
+            top: 80px;
+            color: #f702ff;
+        }
+
+        #admin-panel-button {
+            color: #f702ff;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 3;
+        }
+
+        #points-reached {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #f702ff;
+            font-size: 24px;
+            display: none;
+        }
+
+        #plus-one {
+            position: absolute;
+            font-size: 60px;
+            color: #f702ff;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+            z-index: 10;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="hacker-face"></div>
+    <div id="score">Score: 0 - Multiplier: 1.0x</div>
+    <div id="admin-panel">
+        <input type="password" id="password-input" placeholder="Enter password">
+        <button onclick="validatePassword()">Submit</button>
+        <div id="points-menu" style="display: none;">
+            <input type="number" id="score-input" placeholder="Enter new score">
+            <button onclick="changeScore()">Set Score</button>
+        </div>
+        <div id="ban-menu" style="display: none;">
+            <input type="text" id="ip-input" placeholder="Enter IP">
+            <button onclick="banUser()">Ban</button>
+            <button onclick="unbanUser()">Unban</button>
+        </div>
+    </div>
+    <button id="admin-panel-button" onclick="toggleAdminPanel()">Admin Panel</button>
+    <div id="points-reached"></div>
+    <div id="plus-one"></div>
+
+    <script>
+        let score = localStorage.getItem('score') || 0;
+        const hackerFace = document.getElementById('hacker-face');
+        const scoreDisplay = document.getElementById('score');
+        const adminPanel = document.getElementById('admin-panel');
+        const passwordInput = document.getElementById('password-input');
+        const pointsMenu = document.getElementById('points-menu');
+        const scoreInput = document.getElementById('score-input');
+        const banMenu = document.getElementById('ban-menu');
+        const ipInput = document.getElementById('ip-input');
+        const pointsReached = document.getElementById('points-reached');
+        const plusOne = document.getElementById('plus-one');
+        let isAdminPanelOpen = false;
+        let isPasswordCorrect = false;
+        let isTimedOut = false;
+        let clickHistory = [];
+
+        scoreDisplay.innerText = `Score: ${score} - Multiplier: 1.0x`;
+
+        hackerFace.addEventListener('click', (event) => {
+            const hackerFaceRect = hackerFace.getBoundingClientRect();
+            const xPos = event.clientX - hackerFaceRect.left;
+            const yPos = event.clientY - hackerFaceRect.top;
+
+            if (!isAutoClickerDetected()) {
+                if (!isTimedOut) {
+                    incrementScore();
+                    if (score % 100 === 0 && score !== 0) {
+                        pointsReached.innerText = score === 100 ? '100 points reached' : 'Another 100 reached';
+                        pointsReached.style.display = 'block';
+                        shakeAndExplodeHackerFace();
+                    }
+
+                    showPlusOne(xPos, yPos);
+                } else {
+                    playJumpscareVideo();
+                }
+            } else {
+                playJumpscareVideo();
+                disableClickForTwoMinutes();
+            }
+        });
+
+        const incrementScore = () => {
+            score++;
+            scoreDisplay.innerText = `Score: ${score} - Multiplier: ${getMultiplier()}x`;
+            localStorage.setItem('score', score);
+        };
+
+        const toggleAdminPanel = () => {
+            isAdminPanelOpen = !isAdminPanelOpen;
+            adminPanel.style.display = isAdminPanelOpen ? 'block' : 'none';
+            if (isAdminPanelOpen && isPasswordCorrect) {
+                pointsMenu.style.display = 'block';
+                banMenu.style.display = 'block';
+            } else {
+                pointsMenu.style.display = 'none';
+                banMenu.style.display = 'none';
+            }
+        };
+
+        const validatePassword = () => {
+            const password = passwordInput.value;
+            const validPassword = "PASSWORD0122";
+
+            if (password === validPassword) {
+                isPasswordCorrect = true;
+                toggleAdminPanel();
+                console.log("Password is correct");
+            } else {
+                isPasswordCorrect = false;
+                toggleAdminPanel();
+                console.log("Password is incorrect");
+            }
+        };
+
+        const changeScore = () => {
+            const newScore = parseInt(scoreInput.value) || 0;
+            score = newScore;
+            scoreDisplay.innerText = `Score: ${score} - Multiplier: ${getMultiplier()}x`;
+            localStorage.setItem('score', score);
+        };
+
+        const banUser = () => {
+            const ip = ipInput.value;
+            console.log(`User with IP ${ip} banned.`);
+        };
+
+        const unbanUser = () => {
+            const ip = ipInput.value;
+            console.log(`User with IP ${ip} unbanned.`);
+        };
+
+        const shakeAndExplodeHackerFace = () => {
+            const originalWidth = hackerFace.offsetWidth;
+            const originalHeight = hackerFace.offsetHeight;
+            const originalPosition = window.pageYOffset;
+
+            hackerFace.style.width = originalWidth + 'px';
+            hackerFace.style.height = originalHeight + 'px';
+
+            const startTimestamp = performance.now();
+
+            const animate = (timestamp) => {
+                const elapsed = timestamp - startTimestamp;
+                const duration = 5000; // 5 seconds
+                const shakeOffset = 10 * Math.sin(elapsed * 0.04); // Adjust the shake intensity
+
+                hackerFace.style.transform = `translateX(${shakeOffset}px)`;
+
+                if (elapsed < duration) {
+                    requestAnimationFrame(animate);
+                } else {
+                    hackerFace.style.transform = 'none';
+                    hackerFace.style.width = originalWidth + 'px';
+                    hackerFace.style.height = originalHeight + 'px';
+                }
+            };
+
+            animate(startTimestamp);
+        };
+
+        const showPlusOne = (xPos, yPos) => {
+            const randomOffset = 50;
+            const randomX = Math.floor(Math.random() * (2 * randomOffset + 1)) - randomOffset;
+            const randomY = Math.floor(Math.random() * (2 * randomOffset + 1)) - randomOffset;
+
+            const newX = xPos + randomX;
+            const newY = yPos + randomY;
+
+            plusOne.innerText = '+1';
+            plusOne.style.left = `${newX}px`;
+            plusOne.style.top = `${newY}px`;
+            plusOne.style.opacity = '1';
+
+            setTimeout(() => {
+                plusOne.style.opacity = '0';
+            }, 1000);
+        };
+
+        const getMultiplier = () => {
+            const additionalMultiplier = Math.floor(score / 500) * 0.1;
+            const multiplier = additionalMultiplier > 0 ? 1.0 + additionalMultiplier : 1.0;
+            return multiplier.toFixed(1);
+        };
+
+        const isAutoClickerDetected = () => {
+            const clickThreshold = 100; // Number of clicks within the time threshold
+            const timeThreshold = 5000; // Time threshold in milliseconds (5 seconds)
+            const currentTime = Date.now();
+
+            clickHistory.push(currentTime);
+
+            // Remove old clicks
+            while (clickHistory.length > 0 && currentTime - clickHistory[0] > timeThreshold) {
+                clickHistory.shift();
+            }
+
+            return clickHistory.length >= clickThreshold;
+        };
+
+        const playJumpscareVideo = () => {
+            const video = document.createElement('video');
+            video.src = 'jumpscare.mp4';
+            video.autoplay = true;
+            video.style.position = 'fixed';
+            video.style.top = '0';
+            video.style.left = '0';
+            video.style.width = '100%';
+            video.style.height = '100%';
+            video.style.zIndex = '9999';
+            video.style.pointerEvents = 'none';
+
+            setTimeout(() => {
+                document.body.removeChild(video);
+            }, 5000);
+
+            document.body.appendChild(video);
+        };
+
+        const disableClickForTwoMinutes = () => {
+            isTimedOut = true;
+            hackerFace.style.pointerEvents = 'none';
+            setTimeout(() => {
+                isTimedOut = false;
+                hackerFace.style.pointerEvents = 'auto';
+            }, 120000); // 2 minutes timeout
+        };
+        </script>
+        <script src="script.js"></script>
+</body>
+
+</html>
